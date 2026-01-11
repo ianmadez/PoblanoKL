@@ -633,20 +633,41 @@ button {
   max-width: 400px;
   margin: 0 auto;
   position: relative;
+  overflow: hidden;
 }
 
 .testimonial-track {
   display: flex;
   transition: transform var(--transition-slow);
+  touch-action: pan-x; /* Enable horizontal swipe on mobile */
 }
 
 .testimonial-card {
   flex: 0 0 100%;
+  min-width: 0; /* Fix for flex overflow */
   background: white;
   padding: var(--space-lg);
   border-radius: var(--radius-lg);
   text-align: center;
   box-shadow: var(--shadow-sm);
+}
+
+/* User-submitted reviews get a subtle highlight */
+.testimonial-card.user-review {
+  border: 2px solid var(--sage);
+  position: relative;
+}
+
+.testimonial-card.user-review::after {
+  content: '✨ New';
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  font-size: 0.7rem;
+  background: var(--sage);
+  color: white;
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius-sm);
 }
 
 .testimonial-card .stars {

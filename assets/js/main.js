@@ -374,7 +374,8 @@ _Sent via Poblano KL Website_`;
   const dotsContainer = document.getElementById('carouselDots');
   
   if (testimonialTrack) {
-    const cards = testimonialTrack.querySelectorAll('.testimonial-card');
+    // Use function to get cards dynamically (supports added reviews)
+    const getCards = () => testimonialTrack.querySelectorAll('.testimonial-card');
     let currentIndex = 0;
     let cardsPerView = 1;
     
@@ -395,6 +396,7 @@ _Sent via Poblano KL Website_`;
     const createDots = () => {
       if (!dotsContainer) return;
       dotsContainer.innerHTML = '';
+      const cards = getCards();
       const totalSlides = Math.ceil(cards.length / cardsPerView);
       
       for (let i = 0; i < totalSlides; i++) {
@@ -407,6 +409,7 @@ _Sent via Poblano KL Website_`;
     
     // Update carousel position
     const updateCarousel = () => {
+      const cards = getCards();
       const cardWidth = cards[0]?.offsetWidth || 0;
       const gap = parseInt(getComputedStyle(testimonialTrack).gap) || 0;
       const offset = currentIndex * (cardWidth + gap) * cardsPerView;
@@ -420,30 +423,66 @@ _Sent via Poblano KL Website_`;
     };
     
     const goToSlide = (index) => {
+      const cards = getCards();
       const maxIndex = Math.ceil(cards.length / cardsPerView) - 1;
       currentIndex = Math.max(0, Math.min(index, maxIndex));
       updateCarousel();
     };
     
     const nextSlide = () => {
+      const cards = getCards();
       const maxIndex = Math.ceil(cards.length / cardsPerView) - 1;
       currentIndex = currentIndex >= maxIndex ? 0 : currentIndex + 1;
       updateCarousel();
     };
     
     const prevSlide = () => {
+      const cards = getCards();
       const maxIndex = Math.ceil(cards.length / cardsPerView) - 1;
       currentIndex = currentIndex <= 0 ? maxIndex : currentIndex - 1;
+      updateCarousel();
+    };
+    
+    // Expose refresh function for when reviews are added
+    window.refreshCarousel = () => {
+      createDots();
+      // Navigate to the last slide to show the new review
+      const cards = getCards();
+      const maxIndex = Math.ceil(cards.length / cardsPerView) - 1;
+      currentIndex = maxIndex;
       updateCarousel();
     };
     
     prevBtn?.addEventListener('click', prevSlide);
     nextBtn?.addEventListener('click', nextSlide);
     
+    // Touch/swipe support for mobile
+    let touchStartX = 0;
+    let touchEndX = 0;
+    
+    testimonialTrack.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+      clearInterval(autoAdvance); // Pause auto-advance during touch
+    }, { passive: true });
+    
+    testimonialTrack.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const swipeThreshold = 50;
+      
+      if (touchStartX - touchEndX > swipeThreshold) {
+        nextSlide(); // Swipe left = next
+      } else if (touchEndX - touchStartX > swipeThreshold) {
+        prevSlide(); // Swipe right = prev
+      }
+      
+      // Resume auto-advance
+      autoAdvance = setInterval(nextSlide, 5000);
+    }, { passive: true });
+    
     // Auto-advance carousel
     let autoAdvance = setInterval(nextSlide, 5000);
     
-    // Pause on hover
+    // Pause on hover (desktop)
     testimonialTrack.addEventListener('mouseenter', () => clearInterval(autoAdvance));
     testimonialTrack.addEventListener('mouseleave', () => {
       autoAdvance = setInterval(nextSlide, 5000);
@@ -516,28 +555,41 @@ _Sent via Poblano KL Website_`;
 
   // ============================================
   // FLOATING CTA VISIBILITY
+  // Only show after user scrolls past the hero CTA buttons
   // ============================================
   const floatingCta = document.getElementById('floatingCta');
+  const heroCta = document.querySelector('.hero-cta');
   
-  if (floatingCta) {
+  if (floatingCta && heroCta) {
     let lastScrollY = window.scrollY;
     
-    window.addEventListener('scroll', () => {
+    const updateFloatingCta = () => {
       const currentScrollY = window.scrollY;
+      // Get the bottom position of the hero CTA buttons
+      const heroCtaBottom = heroCta.getBoundingClientRect().bottom + window.scrollY;
       
-      // Hide when scrolling down past hero, show when scrolling up
-      if (currentScrollY > window.innerHeight * 0.8) {
-        if (currentScrollY > lastScrollY) {
-          floatingCta.style.transform = 'translateY(100px)';
-        } else {
+      // Only show floating CTA after scrolling past the hero CTAs
+      if (currentScrollY > heroCtaBottom) {
+        // Show when scrolling up, hide when scrolling down
+        if (currentScrollY < lastScrollY) {
           floatingCta.style.transform = 'translateY(0)';
+          floatingCta.style.opacity = '1';
+        } else {
+          floatingCta.style.transform = 'translateY(100px)';
+          floatingCta.style.opacity = '0';
         }
       } else {
+        // Always hide when hero CTAs are visible
         floatingCta.style.transform = 'translateY(100px)';
+        floatingCta.style.opacity = '0';
       }
       
       lastScrollY = currentScrollY;
-    }, { passive: true });
+    };
+    
+    window.addEventListener('scroll', updateFloatingCta, { passive: true });
+    // Initial check
+    updateFloatingCta();
   }
 
   // ============================================
@@ -615,12 +667,101 @@ _Sent via Poblano KL Website_`;
     const review = { name, text, rating: selectedRating, date: new Date().toISOString() };
     addReviewToCarousel(review);
     
+    // Refresh carousel to show new review and update navigation
+    if (window.refreshCarousel) {
+      window.refreshCarousel();
+    }
+    
     // Reset form
     reviewForm.reset();
     selectedRating = 0;
     starRating?.querySelectorAll('.star').forEach(s => s.classList.remove('active'));
     
-    // Show thank you message
+    // Show thank you message temporarily
+    const wrapper = document.querySelector('.review-form-wrapper');
+    if (wrapper) {
+      const originalContent = wrapper.innerHTML;
+      wrapper.innerHTML = `
+        <div style="text-align: center; padding: 2rem;">
+          <span style="font-size: 3rem;">🌮</span>
+          <h3 style="margin: 1rem 0;">¡Gracias!</h3>
+          <p>Thank you for sharing your experience!</p>
+          <p style="font-size: 0.9rem; color: var(--warm-gray); margin-top: 0.5rem;">Scroll up to see your review!</p>
+        </div>
+      `;
+      
+      // Scroll to show the new review in carousel
+      setTimeout(() => {
+        const reviewsSection = document.getElementById('reviews');
+        if (reviewsSection) {
+          const navHeight = document.querySelector('.navbar')?.offsetHeight || 80;
+          const targetPosition = reviewsSection.getBoundingClientRect().top + window.scrollY - navHeight;
+          window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+        }
+      }, 500);
+      
+      // Restore the form after showing thank you
+      setTimeout(() => {
+        wrapper.innerHTML = originalContent;
+        // Re-initialize star rating listeners
+        reinitializeReviewForm();
+      }, 4000);
+    }
+  });
+  
+  // Function to reinitialize the review form after thank you message
+  const reinitializeReviewForm = () => {
+    const newStarRating = document.getElementById('starRating');
+    const newStars = newStarRating?.querySelectorAll('.star');
+    
+    newStars?.forEach(star => {
+      star.addEventListener('mouseenter', () => {
+        const rating = parseInt(star.dataset.rating);
+        newStars.forEach(s => {
+          s.classList.toggle('hover', parseInt(s.dataset.rating) <= rating);
+        });
+      });
+      
+      star.addEventListener('mouseleave', () => {
+        newStars.forEach(s => s.classList.remove('hover'));
+      });
+      
+      star.addEventListener('click', () => {
+        selectedRating = parseInt(star.dataset.rating);
+        newStars.forEach(s => {
+          s.classList.toggle('active', parseInt(s.dataset.rating) <= selectedRating);
+        });
+      });
+    });
+    
+    // Re-attach form submit handler
+    const newForm = document.getElementById('reviewForm');
+    newForm?.addEventListener('submit', handleReviewSubmit);
+  };
+  
+  // Extract form handler for reuse
+  const handleReviewSubmit = (e) => {
+    e.preventDefault();
+    
+    const name = document.getElementById('reviewName')?.value.trim();
+    const text = document.getElementById('reviewText')?.value.trim();
+    
+    if (!name || !text || selectedRating === 0) {
+      alert('Please fill in all fields and select a star rating.');
+      return;
+    }
+    
+    const review = { name, text, rating: selectedRating, date: new Date().toISOString() };
+    addReviewToCarousel(review);
+    
+    if (window.refreshCarousel) {
+      window.refreshCarousel();
+    }
+    
+    document.getElementById('reviewForm')?.reset();
+    selectedRating = 0;
+    document.querySelectorAll('#starRating .star').forEach(s => s.classList.remove('active'));
+    
     const wrapper = document.querySelector('.review-form-wrapper');
     if (wrapper) {
       const originalContent = wrapper.innerHTML;
@@ -633,12 +774,20 @@ _Sent via Poblano KL Website_`;
       `;
       
       setTimeout(() => {
+        const reviewsSection = document.getElementById('reviews');
+        if (reviewsSection) {
+          const navHeight = document.querySelector('.navbar')?.offsetHeight || 80;
+          const targetPosition = reviewsSection.getBoundingClientRect().top + window.scrollY - navHeight;
+          window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+        }
+      }, 500);
+      
+      setTimeout(() => {
         wrapper.innerHTML = originalContent;
-        // Re-attach event listeners
-        location.reload(); // Simple reload to reinitialize
-      }, 3000);
+        reinitializeReviewForm();
+      }, 4000);
     }
-  });
+  };
 
   // Load saved reviews on page load
   loadSavedReviews();
