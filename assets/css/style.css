@@ -351,16 +351,24 @@ button {
 .hero-cta {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: var(--space-sm);
   width: 100%;
   max-width: 300px;
   margin: 0 auto;
+  padding: 0 var(--space-md);
+  box-sizing: border-box;
 }
 
 .hero-cta .btn {
-  width: 100%;
+  display: flex !important;
+  width: 100% !important;
   justify-content: center;
+  align-items: center;
+  text-align: center;
+  box-sizing: border-box;
+  padding: 1rem 1.75rem;
+  border: 2px solid transparent;
 }
 
 /* Social Proof */
@@ -407,6 +415,7 @@ button {
 .btn-primary {
   background: var(--accent);
   color: white;
+  border: 2px solid var(--accent);
 }
 
 .btn-primary:hover {
