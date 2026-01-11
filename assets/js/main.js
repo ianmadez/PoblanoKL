@@ -281,14 +281,17 @@ _Sent via Poblano KL Website_`;
     // Trigger confetti before redirecting
     triggerConfetti();
     
-    // Small delay for confetti effect
+    // Small delay for confetti effect, then redirect
+    // Using window.location.href for better mobile compatibility (window.open can be blocked)
     setTimeout(() => {
-      window.open(whatsappURL, '_blank');
       closeReservationModal();
       reservationForm.reset();
       partyButtons.forEach(b => b.classList.remove('active'));
       partyButtons[2].classList.add('active'); // Reset to 3
       selectedPartySize = '3';
+      
+      // Use location.href for mobile - more reliable than window.open
+      window.location.href = whatsappURL;
     }, 1500);
   });
 

@@ -368,7 +368,11 @@ button {
   text-align: center;
   box-sizing: border-box;
   padding: 1rem 1.75rem;
-  border: 2px solid transparent;
+}
+
+/* Ensure outline button keeps its border in hero */
+.hero-cta .btn-outline-light {
+  border: 2px solid rgba(255, 255, 255, 0.8) !important;
 }
 
 /* Social Proof */
